@@ -1,0 +1,99 @@
+---
+import ArtistaCard from './ArtistaCard.astro';
+---
+
+<p id="resultados-titulo" class="mt-8 text-lg font-medium">Resultados de búsqueda</p>
+<p id="resultados-contador" class="text-sm text-white/50">Cargando…</p>
+
+<div id="artistas-grid" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"></div>
+
+<p id="artistas-vacio" class="mt-10 hidden text-center text-white/50">No se encontraron artistas.</p>
+
+<ArtistaCard />
+
+<script>
+  import { supabase, type Artista } from '../lib/supabase';
+  import { urlTwitter, urlPatreon, urlPixiv } from '../lib/redes';
+
+  const grid = document.getElementById('artistas-grid')!;
+  const contador = document.getElementById('resultados-contador')!;
+  const vacio = document.getElementById('artistas-vacio')!;
+  const buscador = document.getElementById('buscador-artistas') as HTMLInputElement;
+  const plantilla = document.getElementById('tpl-artista') as HTMLTemplateElement;
+
+  type Tarjeta = { el: HTMLElement; nombre: string };
+  let tarjetas: Tarjeta[] = [];
+
+  const normalizar = (t: string) =>
+    t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+  function ponerRed(el: HTMLElement, selector: string, url: string | null) {
+    const a = el.querySelector<HTMLAnchorElement>(selector)!;
+    if (url) {
+      a.href = url;
+      a.classList.remove('hidden');
+    }
+  }
+
+  function crearTarjeta(a: Artista): Tarjeta {
+    const el = (plantilla.content.cloneNode(true) as DocumentFragment).firstElementChild as HTMLElement;
+
+    const link = el.querySelector<HTMLAnchorElement>('[data-link]')!;
+    link.textContent = a.nombre;
+    link.href = `/imagenes?art=${a.id}`;
+
+    const img = el.querySelector<HTMLImageElement>('[data-avatar]')!;
+    const inicial = el.querySelector<HTMLElement>('[data-inicial]')!;
+    inicial.textContent = a.nombre.charAt(0).toUpperCase();
+    if (a.avatar_url) {
+      img.src = a.avatar_url;
+      img.alt = a.nombre;
+      img.classList.remove('hidden');
+      inicial.classList.add('hidden');
+    }
+
+    ponerRed(el, '[data-twitter]', urlTwitter(a.twitter));
+    ponerRed(el, '[data-patreon]', urlPatreon(a.patreon));
+    ponerRed(el, '[data-pixiv]', urlPixiv(a.pixiv));
+
+    const total = a.imagenes?.[0]?.count ?? 0;
+    el.querySelector<HTMLElement>('[data-cantidad]')!.textContent =
+      `${total} ${total === 1 ? 'Imagen' : 'Imágenes'}`;
+
+    return { el, nombre: normalizar(a.nombre) };
+  }
+
+  function filtrar() {
+    const q = normalizar(buscador.value);
+    let visibles = 0;
+    for (const t of tarjetas) {
+      const mostrar = t.nombre.includes(q);
+      t.el.classList.toggle('hidden', !mostrar);
+      if (mostrar) visibles++;
+    }
+    contador.textContent = `${visibles} ${visibles === 1 ? 'artista encontrado' : 'artistas encontrados'}`;
+    vacio.classList.toggle('hidden', visibles !== 0);
+  }
+
+  async function cargar() {
+    const { data, error } = await supabase
+      .from('artistas')
+      .select('id, nombre, avatar_url, twitter, patreon, pixiv, imagenes(count)')
+      .order('nombre');
+
+    if (error) {
+      contador.textContent = 'No se pudieron cargar los artistas.';
+      console.error(error);
+      return;
+    }
+
+    tarjetas = (data as Artista[]).map(crearTarjeta);
+    const fragmento = document.createDocumentFragment();
+    tarjetas.forEach((t) => fragmento.appendChild(t.el));
+    grid.replaceChildren(fragmento);
+    filtrar();
+  }
+
+  buscador.addEventListener('input', filtrar);
+  cargar();
+</script>

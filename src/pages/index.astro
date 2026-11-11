@@ -1,0 +1,15 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Buscador from '../components/Buscador.astro';
+import ArtistasGrid from '../components/ArtistasGrid.astro';
+---
+
+<Layout titulo="Descubrir artistas" activo="artistas">
+  <h1 class="text-4xl font-extrabold tracking-tight uppercase sm:text-5xl">Descubrir artistas</h1>
+
+  <div class="mt-6">
+    <Buscador id="buscador-artistas" placeholder="Buscar artistas por nombre en tiempo real..." />
+  </div>
+
+  <ArtistasGrid />
+</Layout>

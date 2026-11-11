@@ -1,0 +1,51 @@
+---
+// Caja de búsqueda con "chips". La lógica vive en src/lib/buscador.ts.
+interface Props {
+  id: string;
+  placeholder: string;
+}
+
+const { id, placeholder } = Astro.props;
+---
+
+<div class="relative">
+  <div
+    id="buscador-caja"
+    class="border-acento/70 bg-panel/40 focus-within:border-acento flex min-h-[3.25rem] cursor-text flex-wrap items-center gap-2 rounded-xl border px-4 py-2 shadow-[0_0_14px_rgba(34,211,238,0.25)] focus-within:shadow-[0_0_20px_rgba(34,211,238,0.45)]"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      class="text-acento pointer-events-none h-5 w-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+    >
+      <circle cx="11" cy="11" r="7"></circle>
+      <path d="M20 20l-3.5-3.5"></path>
+    </svg>
+
+    <!-- Aquí se dibujan los chips seleccionados -->
+    <div id="buscador-chips" class="contents"></div>
+
+    <input
+      id={id}
+      type="text"
+      role="combobox"
+      aria-expanded="false"
+      aria-controls="buscador-sugerencias"
+      aria-autocomplete="list"
+      autocomplete="off"
+      placeholder={placeholder}
+      class="min-w-[10rem] flex-1 bg-transparent py-1 text-base text-white outline-none placeholder:text-white/40"
+    />
+  </div>
+
+  <!-- Sugerencias -->
+  <ul
+    id="buscador-sugerencias"
+    role="listbox"
+    class="bg-panel absolute top-full right-0 left-0 z-30 mt-2 hidden max-h-96 overflow-auto rounded-xl border border-white/10 py-1 shadow-xl"
+  >
+  </ul>
+</div>

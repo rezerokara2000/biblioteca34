@@ -1,0 +1,113 @@
+---
+import ColeccionCard from './ColeccionCard.astro';
+---
+
+<p id="resultados-contador" class="mt-5 text-sm text-white/50">Cargando…</p>
+
+<div id="colecciones-grid" class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-5"></div>
+
+<p id="colecciones-vacio" class="mt-10 hidden text-center text-white/50">No se encontraron colecciones.</p>
+
+<nav id="paginacion" class="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="Paginación"></nav>
+
+<ColeccionCard />
+
+<script>
+  import { supabase, type ColeccionLista } from '../lib/supabase';
+  import { iniciarFiltros, type Estado } from '../lib/filtros';
+  import { aplicarTerminos } from '../lib/busqueda';
+  import { pintarPaginacion } from '../lib/paginacion';
+  import { pintarBadge, textoTags, miniatura, esUrl } from '../lib/ui';
+
+  const POR_PAGINA = 24;
+
+  const grid = document.getElementById('colecciones-grid')!;
+  const contador = document.getElementById('resultados-contador')!;
+  const vacio = document.getElementById('colecciones-vacio')!;
+  const paginacion = document.getElementById('paginacion')!;
+  const plantilla = document.getElementById('tpl-coleccion') as HTMLTemplateElement;
+
+  let solicitud = 0;
+
+  function crearTarjeta(c: ColeccionLista): HTMLElement {
+    const el = (plantilla.content.cloneNode(true) as DocumentFragment).firstElementChild as HTMLElement;
+
+    const link = el.querySelector<HTMLAnchorElement>('[data-link]')!;
+    link.href = `/coleccion?id=${c.id}`;
+    link.setAttribute('aria-label', c.titulo);
+
+    const img = el.querySelector<HTMLImageElement>('[data-img]')!;
+    const inicial = el.querySelector<HTMLElement>('[data-inicial]')!;
+    inicial.textContent = c.titulo.charAt(0).toUpperCase();
+    if (esUrl(c.portada_url)) {
+      img.src = miniatura(c.portada_url, 480);
+      img.alt = c.titulo;
+      img.classList.remove('hidden');
+      inicial.classList.add('hidden');
+    }
+
+    const paginas = c.imagenes?.[0]?.count ?? 0;
+    el.querySelector<HTMLElement>('[data-paginas]')!.textContent =
+      `${paginas} ${paginas === 1 ? 'pág.' : 'págs.'}`;
+
+    el.querySelector<HTMLElement>('[data-titulo]')!.textContent = c.titulo;
+
+    const artista = el.querySelector<HTMLAnchorElement>('[data-artista]')!;
+    if (c.artista) {
+      artista.textContent = c.artista.nombre;
+      artista.href = `/colecciones?art=${c.artista.id}`;
+    }
+
+    pintarBadge(el.querySelector<HTMLElement>('[data-badge]')!, c.clasificacion);
+    el.querySelector<HTMLElement>('[data-tags]')!.textContent = textoTags(c.tags);
+    return el;
+  }
+
+  async function cargar(e: Estado) {
+    const id = ++solicitud;
+    contador.textContent = 'Cargando…';
+
+    let consulta = supabase
+      .from('colecciones')
+      .select(
+        'id, titulo, portada_url, clasificacion, tags, personajes, artista:artistas(id, nombre), imagenes(count)',
+        { count: 'exact' },
+      );
+
+    if (e.c) consulta = consulta.eq('clasificacion', e.c);
+    consulta = aplicarTerminos(consulta, e.terminos);
+
+    const desde = (e.p - 1) * POR_PAGINA;
+    const { data, error, count } = await consulta
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(desde, desde + POR_PAGINA - 1);
+
+    if (id !== solicitud) return;
+
+    if (error) {
+      console.error(error);
+      contador.textContent = 'No se pudieron cargar las colecciones.';
+      return;
+    }
+
+    const total = count ?? 0;
+    const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+
+    if (total > 0 && e.p > totalPaginas) {
+      filtros.irAPagina(totalPaginas);
+      return;
+    }
+
+    const colecciones = (data ?? []) as unknown as ColeccionLista[];
+    const fragmento = document.createDocumentFragment();
+    colecciones.forEach((c) => fragmento.appendChild(crearTarjeta(c)));
+    grid.replaceChildren(fragmento);
+
+    contador.textContent = `${total} ${total === 1 ? 'colección encontrada' : 'colecciones encontradas'}`;
+    vacio.classList.toggle('hidden', total !== 0);
+    pintarPaginacion(paginacion, e.p, totalPaginas, (p) => filtros.irAPagina(p));
+  }
+
+  const filtros = iniciarFiltros('colecciones', cargar);
+</script>

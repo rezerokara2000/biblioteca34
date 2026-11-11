@@ -1,0 +1,29 @@
+---
+import '../styles/global.css';
+import MenuHamburguesa from '../components/MenuHamburguesa.astro';
+
+interface Props {
+  titulo?: string;
+  activo?: 'artistas' | 'imagenes' | 'colecciones';
+  ancho?: 'normal' | 'amplio';
+}
+
+const { titulo = 'Artistas', activo = 'artistas', ancho = 'normal' } = Astro.props;
+const maxAncho = ancho === 'amplio' ? 'max-w-[1500px]' : 'max-w-7xl';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulo}</title>
+  </head>
+  <body class="bg-fondo min-h-screen text-white antialiased">
+    <MenuHamburguesa activo={activo} />
+
+    <main class:list={['mx-auto w-full px-4 pt-20 pb-16 sm:px-8', maxAncho]}>
+      <slot />
+    </main>
+  </body>
+</html>

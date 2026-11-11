@@ -1,0 +1,24 @@
+---
+// Plantilla de la tarjeta de colección (portada vertical, como un cómic).
+---
+
+<template id="tpl-coleccion">
+  <article class="bg-panel border-acento/30 hover:border-acento relative overflow-hidden rounded-xl border transition hover:shadow-[0_0_16px_rgba(34,211,238,0.3)]">
+    <a data-link class="block after:absolute after:inset-0 after:content-['']">
+      <div class="bg-fondo relative aspect-[3/4]">
+        <img data-img class="hidden h-full w-full object-cover" alt="" loading="lazy" decoding="async" />
+        <span data-inicial class="flex h-full w-full items-center justify-center text-5xl font-bold text-white/30"></span>
+        <span data-paginas class="absolute right-2 bottom-2 rounded-md bg-black/70 px-2 py-0.5 text-xs"></span>
+      </div>
+    </a>
+
+    <div class="p-3.5">
+      <h3 data-titulo class="truncate text-lg font-semibold"></h3>
+      <div class="mt-1 flex items-center justify-between gap-2">
+        <a data-artista class="hover:text-acento relative z-10 truncate text-sm text-white/60"></a>
+        <span data-badge></span>
+      </div>
+      <p data-tags class="mt-1 truncate text-sm text-white/50"></p>
+    </div>
+  </article>
+</template>

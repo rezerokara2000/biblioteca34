@@ -1,0 +1,142 @@
+---
+import SelectorVersion from './SelectorVersion.astro';
+---
+
+<a href="/colecciones" class="hover:text-acento inline-flex items-center gap-2 text-sm text-white/60">
+  ← Volver a colecciones
+</a>
+
+<p id="estado" class="mt-6 text-white/60">Cargando…</p>
+
+<div id="visor" class="hidden">
+  <!-- Cabecera -->
+  <header class="mt-4 flex flex-wrap items-start justify-between gap-4">
+    <div class="min-w-0">
+      <div class="flex flex-wrap items-center gap-3">
+        <h1 id="titulo" class="text-3xl font-extrabold break-words"></h1>
+        <span id="badge"></span>
+      </div>
+      <p class="mt-1 text-white/60">
+        por <a id="artista" class="hover:text-acento font-semibold text-white"></a>
+        · <span id="total-paginas"></span>
+      </p>
+      <div id="tags" class="mt-3 flex flex-wrap gap-2"></div>
+    </div>
+
+    <SelectorVersion />
+  </header>
+
+  <!-- Páginas en orden, lectura continua -->
+  <div id="paginas" class="mx-auto mt-8 flex max-w-4xl flex-col"></div>
+
+  <p id="sin-paginas" class="mt-10 hidden text-center text-white/50">Esta colección todavía no tiene imágenes.</p>
+</div>
+
+<script>
+  import { supabase, type ColeccionLista, type PaginaColeccion } from '../lib/supabase';
+  import { pintarBadge, esUrl, crearChip } from '../lib/ui';
+
+  const estado = document.getElementById('estado')!;
+  const visor = document.getElementById('visor')!;
+  const contenedor = document.getElementById('paginas')!;
+  const selector = document.getElementById('selector-version')!;
+  const btnOg = document.getElementById('btn-og')!;
+  const btnTr = document.getElementById('btn-tr')!;
+
+  const id = parseInt(new URLSearchParams(location.search).get('id') ?? '', 10);
+
+  async function iniciar() {
+    if (!Number.isFinite(id)) {
+      estado.textContent = 'Colección no encontrada.';
+      return;
+    }
+
+    const [resColeccion, resPaginas] = await Promise.all([
+      supabase
+        .from('colecciones')
+        .select('id, titulo, clasificacion, tags, personajes, artista:artistas(id, nombre)')
+        .eq('id', id)
+        .maybeSingle(),
+      supabase
+        .from('imagenes')
+        .select('id, titulo, og_url, tr_url')
+        .eq('coleccion_id', id)
+        .order('orden_coleccion', { ascending: true, nullsFirst: false })
+        .order('id', { ascending: true }),
+    ]);
+
+    if (resColeccion.error || !resColeccion.data) {
+      if (resColeccion.error) console.error(resColeccion.error);
+      estado.textContent = 'Colección no encontrada.';
+      return;
+    }
+    if (resPaginas.error) console.error(resPaginas.error);
+
+    const c = resColeccion.data as unknown as ColeccionLista;
+    const paginas = (resPaginas.data ?? []) as unknown as PaginaColeccion[];
+
+    document.title = c.titulo;
+    document.getElementById('titulo')!.textContent = c.titulo;
+    pintarBadge(document.getElementById('badge')!, c.clasificacion);
+
+    const artista = document.getElementById('artista') as HTMLAnchorElement;
+    if (c.artista) {
+      artista.textContent = c.artista.nombre;
+      artista.href = `/colecciones?art=${c.artista.id}`;
+    } else {
+      artista.textContent = 'Desconocido';
+    }
+
+    document.getElementById('total-paginas')!.textContent =
+      `${paginas.length} ${paginas.length === 1 ? 'página' : 'páginas'}`;
+
+    const tags = document.getElementById('tags')!;
+    c.personajes.forEach((p) => tags.appendChild(crearChip(p, `/colecciones?per=${encodeURIComponent(p)}`)));
+    c.tags.forEach((t) => tags.appendChild(crearChip(`#${t}`, `/colecciones?tag=${encodeURIComponent(t)}`)));
+
+    // --- Páginas ---
+    const items = paginas.map((p, n) => {
+      const img = document.createElement('img');
+      img.src = p.og_url;
+      img.alt = `${c.titulo} – página ${n + 1}`;
+      img.loading = n < 2 ? 'eager' : 'lazy';
+      img.decoding = 'async';
+      img.className = 'block w-full bg-panel/40';
+      contenedor.appendChild(img);
+      return { img, og: p.og_url, tr: esUrl(p.tr_url) ? p.tr_url.trim() : null };
+    });
+
+    document.getElementById('sin-paginas')!.classList.toggle('hidden', items.length !== 0);
+
+    // --- Alternador OG / TR global ---
+    // Si una página no tiene traducción, se queda con el original.
+    const hayTr = items.some((it) => it.tr);
+    let modo: 'og' | 'tr' = 'og';
+
+    const aplicar = () => {
+      items.forEach((it) => {
+        const url = modo === 'tr' && it.tr ? it.tr : it.og;
+        if (it.img.getAttribute('src') !== url) it.img.src = url;
+      });
+      btnOg.setAttribute('aria-pressed', String(modo === 'og'));
+      btnTr.setAttribute('aria-pressed', String(modo === 'tr'));
+    };
+
+    if (hayTr) {
+      selector.classList.remove('hidden');
+      btnOg.addEventListener('click', () => {
+        modo = 'og';
+        aplicar();
+      });
+      btnTr.addEventListener('click', () => {
+        modo = 'tr';
+        aplicar();
+      });
+    }
+
+    estado.classList.add('hidden');
+    visor.classList.remove('hidden');
+  }
+
+  iniciar();
+</script>

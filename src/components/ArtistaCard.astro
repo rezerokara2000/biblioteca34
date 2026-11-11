@@ -1,0 +1,35 @@
+---
+// Plantilla de la tarjeta de artista. ArtistasGrid la clona por cada artista.
+// El enlace principal cubre toda la tarjeta; los iconos de redes quedan por encima (z-10).
+---
+
+<template id="tpl-artista">
+  <article class="bg-panel hover:border-acento/60 relative flex items-center gap-4 rounded-xl border border-transparent p-4 transition">
+    <div class="border-acento/70 bg-fondo h-16 w-16 shrink-0 overflow-hidden rounded-full border-2">
+      <img data-avatar class="hidden h-full w-full object-cover" alt="" loading="lazy" />
+      <span data-inicial class="flex h-full w-full items-center justify-center text-2xl font-bold text-white/70"></span>
+    </div>
+
+    <div class="min-w-0">
+      <a data-link class="block truncate text-xl font-bold after:absolute after:inset-0 after:content-['']"></a>
+
+      <div class="relative z-10 mt-1 flex items-center gap-3 text-white/60">
+        <a data-twitter class="hover:text-acento hidden" target="_blank" rel="noopener noreferrer" aria-label="X / Twitter">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor">
+            <path d="M18.244 2H21.5l-7.1 8.12L22.75 22h-6.54l-5.12-6.7L5.2 22H1.94l7.6-8.68L1.5 2h6.7l4.63 6.12L18.244 2Zm-1.14 18h1.8L7.2 3.9H5.27L17.104 20Z" />
+          </svg>
+        </a>
+        <a data-patreon class="hover:text-acento hidden" target="_blank" rel="noopener noreferrer" aria-label="Patreon">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor">
+            <circle cx="15" cy="9" r="6.5" />
+            <rect x="2" y="2.5" width="3.6" height="19" rx="0.5" />
+          </svg>
+        </a>
+        <a data-pixiv class="hover:text-acento hidden text-sm leading-none font-bold" target="_blank" rel="noopener noreferrer" aria-label="Pixiv">
+          P
+        </a>
+        <span data-cantidad class="text-sm"></span>
+      </div>
+    </div>
+  </article>
+</template>

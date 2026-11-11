@@ -1,0 +1,167 @@
+---
+import SelectorVersion from './SelectorVersion.astro';
+---
+
+<a href="/imagenes" id="volver" class="hover:text-acento inline-flex items-center gap-2 text-sm text-white/60">
+  ← Volver a imágenes
+</a>
+
+<p id="estado" class="mt-6 text-white/60">Cargando…</p>
+
+<div id="detalle" class="hidden">
+  <div class="mt-4 grid gap-6 lg:grid-cols-[1fr_340px]">
+    <!-- Imagen -->
+    <section class="min-w-0">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <SelectorVersion />
+        <button
+          id="btn-zoom"
+          type="button"
+          class="hover:border-acento hover:text-acento rounded-lg border border-white/15 px-4 py-2 text-sm text-white/70 transition"
+        >
+          Tamaño original
+        </button>
+      </div>
+
+      <div class="bg-panel/40 max-h-[85vh] overflow-auto rounded-xl border border-white/10">
+        <img id="imagen" class="mx-auto max-w-full" alt="" decoding="async" />
+      </div>
+    </section>
+
+    <!-- Información -->
+    <aside class="space-y-6">
+      <div>
+        <div class="flex items-start justify-between gap-3">
+          <h1 id="titulo" class="text-2xl font-bold break-words"></h1>
+          <span id="badge"></span>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-sm tracking-wide text-white/50 uppercase">Artista</h2>
+        <a id="artista" class="hover:text-acento text-lg font-semibold"></a>
+      </div>
+
+      <div id="bloque-coleccion" class="hidden">
+        <h2 class="text-sm tracking-wide text-white/50 uppercase">Colección</h2>
+        <a id="coleccion" class="hover:text-acento text-lg font-semibold"></a>
+      </div>
+
+      <div id="bloque-personajes" class="hidden">
+        <h2 class="mb-2 text-sm tracking-wide text-white/50 uppercase">Personajes</h2>
+        <div id="personajes" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <div id="bloque-tags" class="hidden">
+        <h2 class="mb-2 text-sm tracking-wide text-white/50 uppercase">Etiquetas</h2>
+        <div id="tags" class="flex flex-wrap gap-2"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  import { supabase, type ImagenDetalle } from '../lib/supabase';
+  import { pintarBadge, esUrl, crearChip } from '../lib/ui';
+
+  const estado = document.getElementById('estado')!;
+  const detalle = document.getElementById('detalle')!;
+  const img = document.getElementById('imagen') as HTMLImageElement;
+  const selector = document.getElementById('selector-version')!;
+  const btnOg = document.getElementById('btn-og')!;
+  const btnTr = document.getElementById('btn-tr')!;
+  const btnZoom = document.getElementById('btn-zoom')!;
+
+  const id = parseInt(new URLSearchParams(location.search).get('id') ?? '', 10);
+
+  async function iniciar() {
+    if (!Number.isFinite(id)) {
+      estado.textContent = 'Imagen no encontrada.';
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('imagenes')
+      .select(
+        'id, titulo, og_url, tr_url, clasificacion, tags, personajes, orden_coleccion, artista:artistas(id, nombre), coleccion:colecciones(id, titulo)',
+      )
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error || !data) {
+      if (error) console.error(error);
+      estado.textContent = 'Imagen no encontrada.';
+      return;
+    }
+
+    const i = data as unknown as ImagenDetalle;
+    document.title = i.titulo;
+
+    document.getElementById('titulo')!.textContent = i.titulo;
+    pintarBadge(document.getElementById('badge')!, i.clasificacion);
+
+    const artista = document.getElementById('artista') as HTMLAnchorElement;
+    if (i.artista) {
+      artista.textContent = i.artista.nombre;
+      artista.href = `/imagenes?art=${i.artista.id}`;
+    } else {
+      artista.textContent = 'Desconocido';
+    }
+
+    if (i.coleccion) {
+      const c = document.getElementById('coleccion') as HTMLAnchorElement;
+      c.textContent = i.coleccion.titulo;
+      c.href = `/coleccion?id=${i.coleccion.id}`;
+      document.getElementById('bloque-coleccion')!.classList.remove('hidden');
+    }
+
+    const llenar = (bloque: string, contenedor: string, valores: string[], prefijo: string, param: string) => {
+      if (!valores.length) return;
+      const cont = document.getElementById(contenedor)!;
+      valores.forEach((v) =>
+        cont.appendChild(crearChip(`${prefijo}${v}`, `/imagenes?${param}=${encodeURIComponent(v)}`)),
+      );
+      document.getElementById(bloque)!.classList.remove('hidden');
+    };
+    llenar('bloque-personajes', 'personajes', i.personajes, '', 'per');
+    llenar('bloque-tags', 'tags', i.tags, '#', 'tag');
+
+    // --- Alternador OG / TR: solo si tr_url es una URL válida ---
+    const hayTr = esUrl(i.tr_url);
+    let modo: 'og' | 'tr' = 'og';
+
+    const mostrar = () => {
+      img.src = modo === 'tr' && hayTr ? i.tr_url!.trim() : i.og_url;
+      img.alt = i.titulo;
+      btnOg.setAttribute('aria-pressed', String(modo === 'og'));
+      btnTr.setAttribute('aria-pressed', String(modo === 'tr'));
+    };
+
+    if (hayTr) {
+      selector.classList.remove('hidden');
+      btnOg.addEventListener('click', () => {
+        modo = 'og';
+        mostrar();
+      });
+      btnTr.addEventListener('click', () => {
+        modo = 'tr';
+        mostrar();
+      });
+    }
+
+    // --- Ajustar al ancho / tamaño original ---
+    let original = false;
+    btnZoom.addEventListener('click', () => {
+      original = !original;
+      img.classList.toggle('max-w-full', !original);
+      img.classList.toggle('max-w-none', original);
+      btnZoom.textContent = original ? 'Ajustar al ancho' : 'Tamaño original';
+    });
+
+    mostrar();
+    estado.classList.add('hidden');
+    detalle.classList.remove('hidden');
+  }
+
+  iniciar();
+</script>

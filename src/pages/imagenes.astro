@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import BarraFiltros from '../components/BarraFiltros.astro';
+import ImagenesGrid from '../components/ImagenesGrid.astro';
+---
+
+<Layout titulo="Imágenes" activo="imagenes" ancho="amplio">
+  <BarraFiltros placeholder="Buscar artistas, personajes o etiquetas..." />
+  <ImagenesGrid />
+</Layout>

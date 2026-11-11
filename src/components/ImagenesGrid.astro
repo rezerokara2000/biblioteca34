@@ -1,0 +1,100 @@
+---
+import ImagenCard from './ImagenCard.astro';
+---
+
+<p id="resultados-contador" class="mt-5 text-sm text-white/50">Cargando…</p>
+
+<!-- Miniaturas más grandes: mínimo 300px por tarjeta -->
+<div id="imagenes-grid" class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5"></div>
+
+<p id="imagenes-vacio" class="mt-10 hidden text-center text-white/50">No se encontraron imágenes.</p>
+
+<nav id="paginacion" class="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="Paginación"></nav>
+
+<ImagenCard />
+
+<script>
+  import { supabase, type ImagenLista } from '../lib/supabase';
+  import { iniciarFiltros, type Estado } from '../lib/filtros';
+  import { aplicarTerminos } from '../lib/busqueda';
+  import { pintarPaginacion } from '../lib/paginacion';
+  import { pintarBadge, textoTags, miniatura } from '../lib/ui';
+
+  const POR_PAGINA = 30;
+
+  const grid = document.getElementById('imagenes-grid')!;
+  const contador = document.getElementById('resultados-contador')!;
+  const vacio = document.getElementById('imagenes-vacio')!;
+  const paginacion = document.getElementById('paginacion')!;
+  const plantilla = document.getElementById('tpl-imagen') as HTMLTemplateElement;
+
+  let solicitud = 0;
+
+  function crearTarjeta(i: ImagenLista): HTMLElement {
+    const el = (plantilla.content.cloneNode(true) as DocumentFragment).firstElementChild as HTMLElement;
+
+    el.querySelector<HTMLAnchorElement>('[data-link]')!.href = `/imagen?id=${i.id}`;
+
+    const img = el.querySelector<HTMLImageElement>('[data-img]')!;
+    img.src = miniatura(i.og_url);
+    img.alt = i.titulo;
+
+    const artista = el.querySelector<HTMLAnchorElement>('[data-artista]')!;
+    if (i.artista) {
+      artista.textContent = i.artista.nombre;
+      artista.href = `/imagenes?art=${i.artista.id}`;
+    }
+
+    pintarBadge(el.querySelector<HTMLElement>('[data-badge]')!, i.clasificacion);
+    el.querySelector<HTMLElement>('[data-tags]')!.textContent = textoTags(i.tags);
+    return el;
+  }
+
+  async function cargar(e: Estado) {
+    const id = ++solicitud;
+    contador.textContent = 'Cargando…';
+
+    let consulta = supabase
+      .from('imagenes')
+      .select('id, titulo, og_url, clasificacion, tags, personajes, artista:artistas(id, nombre)', {
+        count: 'exact',
+      });
+
+    if (e.c) consulta = consulta.eq('clasificacion', e.c);
+    consulta = aplicarTerminos(consulta, e.terminos);
+
+    const desde = (e.p - 1) * POR_PAGINA;
+    const { data, error, count } = await consulta
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(desde, desde + POR_PAGINA - 1);
+
+    if (id !== solicitud) return; // llegó una respuesta vieja, se ignora
+
+    if (error) {
+      console.error(error);
+      contador.textContent = 'No se pudieron cargar las imágenes.';
+      return;
+    }
+
+    const total = count ?? 0;
+    const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA));
+
+    // Si la página pedida ya no existe (p. ej. tras filtrar), vuelve a la última.
+    if (total > 0 && e.p > totalPaginas) {
+      filtros.irAPagina(totalPaginas);
+      return;
+    }
+
+    const imagenes = (data ?? []) as unknown as ImagenLista[];
+    const fragmento = document.createDocumentFragment();
+    imagenes.forEach((i) => fragmento.appendChild(crearTarjeta(i)));
+    grid.replaceChildren(fragmento);
+
+    contador.textContent = `${total} ${total === 1 ? 'imagen encontrada' : 'imágenes encontradas'}`;
+    vacio.classList.toggle('hidden', total !== 0);
+    pintarPaginacion(paginacion, e.p, totalPaginas, (p) => filtros.irAPagina(p));
+  }
+
+  const filtros = iniciarFiltros('imagenes', cargar);
+</script>

@@ -1,0 +1,30 @@
+---
+// Botones SFW / NSFW. Se comportan como interruptores (aria-pressed lo controla filtros.ts):
+// ninguno activo = se muestra todo.
+---
+
+<div class="flex shrink-0 gap-3">
+  <button
+    id="btn-sfw"
+    type="button"
+    aria-pressed="false"
+    class="flex items-center gap-2 rounded-full border border-emerald-400/60 px-5 py-2.5 font-bold text-emerald-400 transition hover:bg-emerald-400/10 aria-pressed:bg-emerald-400/20 aria-pressed:shadow-[0_0_14px_rgba(52,211,153,0.5)]"
+  >
+    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12l5 5L20 7"></path>
+    </svg>
+    SFW
+  </button>
+
+  <button
+    id="btn-nsfw"
+    type="button"
+    aria-pressed="false"
+    class="flex items-center gap-2 rounded-full border border-red-400/60 px-5 py-2.5 font-bold text-red-400 transition hover:bg-red-400/10 aria-pressed:bg-red-400/20 aria-pressed:shadow-[0_0_14px_rgba(248,113,113,0.5)]"
+  >
+    <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor">
+      <path d="M6 10V8a6 6 0 1 1 12 0v2h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h1Zm2 0h8V8a4 4 0 1 0-8 0v2Z"></path>
+    </svg>
+    NSFW
+  </button>
+</div>

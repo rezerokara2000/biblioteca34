@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import BarraFiltros from '../components/BarraFiltros.astro';
+import ColeccionesGrid from '../components/ColeccionesGrid.astro';
+---
+
+<Layout titulo="Colecciones" activo="colecciones" ancho="amplio">
+  <BarraFiltros placeholder="Buscar por título, artista, personajes o etiquetas..." />
+  <ColeccionesGrid />
+</Layout>
